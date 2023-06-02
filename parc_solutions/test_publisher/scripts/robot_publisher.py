@@ -6,13 +6,20 @@ import rospy
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import NavSatFix
 from parc_robot.gps2cartesian import gps_to_cartesian
+from sensor_msgs.msg import LaserScan
+
 import time
 import math
+
+def callback(msg):
+    print (msg)
+
 
 def move_robot():
     rospy.init_node('robot_publisher', anonymous=True)
     # Create a publisher which can "talk" to Robot and tell it to move
     pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
+    sub = rospy.Subscriber('/scan', LaserScan, callback)
 
     # Set publish rate at 10 Hz
     rate = rospy.Rate(10)

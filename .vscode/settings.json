@@ -1,0 +1,5 @@
+{
+    "python.analysis.extraPaths": [
+        "./PARC-Engineers-League/parc_robot/src"
+    ]
+}
