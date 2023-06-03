@@ -1,0 +1,25 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/home/dan/catkin_ws/devel/include/**",
+        "/opt/ros/noetic/include/**",
+        "/home/dan/catkin_ws/src/PARC-Engineers-League/parc_robot/include/**",
+        "/home/dan/catkin_ws/src/PARC-Engineers-League/scout_ros/scout_base/include/**",
+        "/home/dan/catkin_ws/src/parc_solutions/test_publisher/include/**",
+        "/home/dan/catkin_ws/src/PARC-Engineers-League/ugv_sdk/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}

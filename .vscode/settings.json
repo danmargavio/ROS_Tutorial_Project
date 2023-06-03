@@ -1,5 +1,9 @@
 {
     "python.analysis.extraPaths": [
         "./PARC-Engineers-League/parc_robot/src"
+    ],
+    "python.autoComplete.extraPaths": [
+        "/home/dan/catkin_ws/devel/lib/python3/dist-packages",
+        "/opt/ros/noetic/lib/python3/dist-packages"
     ]
 }
