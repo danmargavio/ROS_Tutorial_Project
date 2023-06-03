@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import rospy
 from geometry_msgs.msg import Twist
@@ -13,20 +13,18 @@ import numpy as np
 
 l_cam_bridge = CvBridge()
 r_cam_bridge = CvBridge()
+c_cam_bridge = CvBridge()
+
 lettuce_left_bottom = int(-1)
 lettuce_right_top = int(-1)
-
-def update_node():
-    #rospy.Subscriber('/scan', LaserScan, lidar_callback)
-    #rospy.Subscriber("/camera/image_raw", Image, image_callback_f)
-    rospy.Subscriber("/left_camera/image_raw", Image, image_callback_l)
-    rospy.Subscriber("/right_camera/image_raw", Image, image_callback_r)
+lettuce_center_left = int(-1)
+lettuce_center_right = int(-1)
 
 def image_callback_l(msg):
     global lettuce_left_bottom
     try:
         cv2_img = l_cam_bridge.imgmsg_to_cv2(msg, "bgr8")
-        #cv2.imshow("left_camera", cv2_img)
+        #cv2.imshow("left camera raw", cv2_img)
         #cv2.waitKey(20)
 
         # convert to hsv colorspace
@@ -47,18 +45,18 @@ def image_callback_l(msg):
         mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
 
         #cv2.imshow("left camera post processed", mask)
-        #cv2.waitKey(20)
+        #cv2.waitKey(0)
 
         lettuce_left_bottom = max(np.where(mask == 255)[:][0])
-        #print("left side lettuce is here: " + str(lettuce_left_bottom))
+        print("left side lettuce is here: " + str(lettuce_left_bottom))
     except CvBridgeError as e:
         print(e)
 
 def image_callback_r(msg):
-    global lettuce_right_top
+    global lettuce
     try:
         cv2_img = r_cam_bridge.imgmsg_to_cv2(msg, "bgr8")
-        #cv2.imshow("left_camera", cv2_img)
+        #cv2.imshow("right camera raw", cv2_img)
         #cv2.waitKey(20)
 
         # convert to hsv colorspace
@@ -79,10 +77,59 @@ def image_callback_r(msg):
         mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
 
         #cv2.imshow("right camera post processed", mask)
-        #cv2.waitKey(20)
+        #cv2.waitKey(0)
 
         lettuce_right_top = min(np.where(mask == 255)[:][0])
-        #print("right side lettuce is here: " + str(lettuce_right_top))
+        print("right side lettuce is here: " + str(lettuce_right_top))
+    except CvBridgeError as e:
+        print(e)
+
+def image_callback_c(msg):
+    global lettuce_center_left
+    global lettuce_center_right    
+    try:
+        cv2_img = c_cam_bridge.imgmsg_to_cv2(msg, "bgr8")
+        #cv2.imshow("center camera raw", cv2_img)
+        #cv2.waitKey(20)
+
+        # convert to hsv colorspace
+        hsv = cv2.cvtColor(cv2_img, cv2.COLOR_BGR2HSV)
+
+        # lower bound and upper bound for Green color
+        lower_bound = np.array([40, 15, 20])	 
+        upper_bound = np.array([110, 255, 255])
+
+        # find the colors within the boundaries
+        mask = cv2.inRange(hsv, lower_bound, upper_bound)
+
+        #define kernel size  
+        kernel = np.ones((7,7),np.uint8)
+
+        # Remove unnecessary noise from mask
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+
+        cv2.imshow("center camera post processed", mask)
+        cv2.waitKey(20)
+
+        bottom_row = mask[max(np.where(mask == 255)[:][0])-2][:]
+        #lettuce_center_left = min(np.where(mask == 255)[-1][:])
+        #lettuce_center_right = max(np.where(mask == 255)[-1][:])
+
+        #print(mask[max(np.where(mask == 255)[:][0])][:])
+
+        for x in range(np.size(bottom_row)-1):
+            if (bottom_row[x] == 255) and (bottom_row[x+1] == 0):
+                lettuce_center_left = x            
+        print(lettuce_center_left)
+
+        for x in range(lettuce_center_left + 10, np.size(bottom_row)-1):
+            if (bottom_row[x] == 0) and (bottom_row[x+1] == 255):
+                lettuce_center_right = x        
+        #print(lettuce_center_right)
+
+        #print("center left lettuce is here: " + str(lettuce_center_left))
+        #print("center right lettuce is here: " + str(lettuce_center_right))
     except CvBridgeError as e:
         print(e)
 
@@ -164,6 +211,9 @@ def main_robot_code():
     global lettuce_left_bottom
     global lettuce_right_top
     robot_cmd_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
+    #robot_c_cam_sub = rospy.Subscriber("/camera/image_raw", Image, callback=image_callback_c)
+    robot_r_cam_sub = rospy.Subscriber("/right_camera/image_raw", Image, callback=image_callback_r)
+    robot_l_cam_sub = rospy.Subscriber("/left_camera/image_raw", Image, callback=image_callback_l)
 
     # One time read of the GPS data
     #gps = rospy.wait_for_message('gps/fix', NavSatFix) # subscribe to the gps topic once.
@@ -178,21 +228,18 @@ def main_robot_code():
 
     # Main loop
     while True:
-        update_node()
-        print("right side lettuce is here: " + str(lettuce_right_top))
-        print("left side lettuce is here: " + str(lettuce_left_bottom))
-        if lettuce_left_bottom > 300:
-            move_cmd.linear.x = 0.15
-            move_cmd.angular.z = -0.05
-        elif lettuce_right_top < 500:
-            move_cmd.linear.x = 0.15
-            move_cmd.angular.z = 0.05
+        move_cmd.linear.x = 0.1
+        if (lettuce_left_bottom != 0) and (lettuce_right_top != 0):
+            if lettuce_left_bottom > lettuce_right_top:
+                    move_cmd.angular.z = -0.005
+                    print("moving left")
+            else:
+                    move_cmd.angular.z = +0.005
+                    print("moving right")
         else:
-            move_cmd.linear.x = 0.15
-            move_cmd.angular.z = 0.0       
+                    move_cmd.angular.z = 0.0
 
-        robot_cmd_pub.publish(move_cmd) 
-        #rospy.spin()
+        robot_cmd_pub.publish(move_cmd)
         rate.sleep()
 
 if __name__ == '__main__':
